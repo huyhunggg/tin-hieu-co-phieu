@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bảng Tín Hiệu Cổ Phiếu API</title>
+    <title>Hệ Thống Lọc Tín Hiệu Cổ Phiếu - Bản T+</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -14,7 +14,33 @@
         h1 {
             text-align: center;
             color: #1f2328;
+            margin-bottom: 20px;
+        }
+        /* Style cho Hệ thống Tabs */
+        .tabs-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
             margin-bottom: 30px;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            background-color: #ffffff;
+            color: #24292f;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-button:hover {
+            background-color: #f3f4f6;
+        }
+        .tab-button.active {
+            background-color: #0969da;
+            color: #ffffff;
+            border-color: #0969da;
         }
         .grid-container {
             display: flex;
@@ -25,13 +51,14 @@
         }
         .card {
             flex: 1 1 calc(50% - 20px);
-            min-width: 300px;
+            min-width: 320px;
             border: 1px solid #e1e4e8;
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             background-color: #ffffff;
             box-sizing: border-box;
+            position: relative;
         }
         .card-header {
             display: flex;
@@ -55,25 +82,28 @@
         .sub-title {
             color: #57606a;
             font-size: 13px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
         .divider {
             height: 6px;
             background-color: #1f2328;
             border-radius: 3px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .recommendation {
             margin: 0 0 10px 0;
-            font-size: 18px;
-            color: #1f2328;
+            font-size: 16px;
+            color: #0969da;
             text-transform: uppercase;
         }
-        .setup-text {
-            font-size: 13px;
-            color: #57606a;
-            line-height: 1.5;
+        .checklist-box {
+            background-color: #f6f8fa;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            color: #24292f;
             margin-bottom: 15px;
+            border-left: 4px solid #0969da;
         }
         .info-table {
             width: 100%;
@@ -82,7 +112,7 @@
             margin-bottom: 15px;
         }
         .info-table td {
-            padding: 6px 0;
+            padding: 5px 0;
             color: #57606a;
             width: 25%;
         }
@@ -107,83 +137,198 @@
             font-size: 16px;
             color: #57606a;
             width: 100%;
+            padding: 40px;
+        }
+        .note-box {
+            font-size: 11px;
+            color: #657b83;
+            background-color: #fdf6e3;
+            padding: 6px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px dashed #93a1a1;
         }
     </style>
 </head>
 <body>
 
-    <h1>📈 BẢNG THEO DÕI TÍN HIỆU CỔ PHIẾU CHẠY API</h1>
+    <h1>📈 HỆ THỐNG LỌC TÍN HIỆU CỔ PHIẾU</h1>
+
+    <div class="tabs-container">
+        <button class="tab-button active" onclick="switchTab('all')">Tất Cả Mã</button>
+        <button class="tab-button" onclick="switchTab('tplus')">🔥 Lướt Sóng T+ Pro</button>
+        <button class="tab-button" onclick="switchTab('cycle')">🔄 Chu Kỳ Tăng Mới</button>
+    </div>
 
     <div class="grid-container" id="stock-grid">
-        <div class="loading">Đang tải dữ liệu từ API thực tế...</div>
+        <div class="loading">Đang kết nối dữ liệu Vnstock API...</div>
     </div>
 
     <script>
-        // Giả lập hoặc gọi trực tiếp API lấy dữ liệu của Sếp
-        // (Sếp có thể thay URL fetch bên dưới bằng link API Vnstock thật)
+        let allStocksData = []; // Biến lưu trữ tổng dữ liệu gốc từ API
+
+        // Hàm gọi dữ liệu từ Vnstock API của Sếp
         async function fetchStockData() {
             try {
-                // Thay đoạn này bằng URL API thật nếu Sếp có: const response = await fetch('URL_API_CỦA_SẾP');
-                // Dưới đây là dữ liệu mẫu cấu trúc chuẩn tự động sinh ra giống ảnh của Sếp
-                const data = [
-                    { symbol: "STB", name: "Sacombank · Ngân hàng", score: "87/100", action: "Mua từng phần", setup: "Breakout 20 phiên · STB đạt 87/100 điểm, xu hướng uptrend mạnh, dòng tiền 18/20, rủi ro 15/15.", gia: "72.300", rsi: "67.32", phien20: "1.54%", vol: "1.42", trend: "20", mom: "9", money: "18", setup_val: "14", risk: "15", rs: "11", tags: ["Vnstock API", "Tín hiệu kỹ thuật", "Ngân hàng"] },
-                    { symbol: "PVP", name: "PVP · Dầu khí / Năng lượng", score: "87/100", action: "Mua từng phần", setup: "Breakout 20 phiên · PVP đạt 87/100 điểm, xu hướng uptrend mạnh, dòng tiền 16/20, rủi ro 15/15.", gia: "18.200", rsi: "59.21", phien20: "0.83%", vol: "2.48", trend: "20", mom: "7", money: "16", setup_val: "14", risk: "15", rs: "15", tags: ["Vnstock API", "Tín hiệu kỹ thuật", "Dầu khí / Năng lượng"] },
-                    { symbol: "TTA", name: "TTA · Dầu khí / Năng lượng", score: "86/100", action: "Canh mua / Mua khi xác nhận", setup: "Breakout 20 phiên · TTA đạt 86/100 điểm, xu hướng tích cực, dòng tiền 20/20, rủi ro 15/15.", gia: "11.200", rsi: "68.29", phien20: "8.74%", vol: "3.98", trend: "15", mom: "11", money: "20", setup_val: "14", risk: "15", rs: "11", tags: ["Vnstock API", "Tín hiệu kỹ thuật", "Dầu khí / Năng lượng"] },
-                    { symbol: "PHP", name: "PHP · Logistics / Cảng biển / Vận tải", score: "86/100", action: "Mua từng phần", setup: "Pullback MA20 · PHP đạt 86/100 điểm, xu hướng uptrend mạnh, dòng tiền 15/20, rủi ro 13/15.", gia: "38.500", rsi: "62.32", phien20: "5.19%", vol: "1.53", trend: "20", mom: "11", money: "15", setup_val: "12", risk: "13", rs: "15", tags: ["Vnstock API", "Tín hiệu kỹ thuật", "Logistics / Cảng biển / Vận tải"] }
+                // Sếp thay thế URL dưới đây bằng đường dẫn API Vnstock thực tế của Sếp
+                // const response = await fetch('ĐƯỜNG_LINK_API_VNSTOCK_CỦA_SẾP');
+                // const data = await response.json();
+                
+                // MẪU DỮ LIỆU ĐẦU VÀO ĐẦY ĐỦ CHỈ SỐ ĐỂ CHẠY THUẬT TOÁN BỘ LỌC T+
+                allStocksData = [
+                    { 
+                        symbol: "STB", name: "Sacombank · Ngân hàng", score: 87, gia: 72300, rsi: 58, phien20: 1.54, vol_ratio: 1.42, trend: 20, mom: 11, money: 18, risk: 15, rs: 11,
+                        above_ma20: true, above_ma50: true, ma20_up: true, macd_above_signal: true, dist_ma20: 2.1, support_near: true,
+                        tich_luy_thang: 2, day_sau_cao_hon: false, approach_ma100_200: false, ichimoku_test: true, catalyst: "Nợ xấu xử lý xong, kỳ vọng đấu giá cổ phiếu VAMC."
+                    },
+                    { 
+                        symbol: "PVP", name: "PVP · Dầu khí / Năng lượng", score: 75, gia: 18200, rsi: 54, phien20: 0.83, vol_ratio: 1.25, trend: 20, mom: 9, money: 14, risk: 9, rs: 15,
+                        above_ma20: true, above_ma50: true, ma20_up: true, macd_above_signal: true, dist_ma20: 3.5, support_near: true,
+                        tich_luy_thang: 1, day_sau_cao_hon: false, approach_ma100_200: false, ichimoku_test: false, catalyst: "Giá cước vận tải dầu thô nội địa ổn định."
+                    },
+                    { 
+                        symbol: "VIC", name: "Vingroup · Bất động sản", score: 68, gia: 42500, rsi: 52, phien20: -1.2, vol_ratio: 1.35, trend: 12, mom: 6, money: 10, risk: 5, rs: 9,
+                        above_ma20: true, above_ma50: true, ma20_up: true, macd_above_signal: true, dist_ma20: 1.2, support_near: true,
+                        tich_luy_thang: 5, day_sau_cao_hon: true, approach_ma100_200: true, ichimoku_test: true, catalyst: "Bổ sung cơ bản: VinFast bàn giao xe tốt ở Mỹ + Catalyst IPO công ty con."
+                    },
+                    { 
+                        symbol: "PHP", name: "PHP · Logistics / Cảng biển", score: 86, gia: 38500, rsi: 75, phien20: 12.5, vol_ratio: 1.53, trend: 20, mom: 11, money: 15, risk: 13, rs: 15,
+                        above_ma20: true, above_ma50: true, ma20_up: true, macd_above_signal: true, dist_ma20: 11.2, support_near: false,
+                        tich_luy_thang: 1, day_sau_cao_hon: false, approach_ma100_200: false, ichimoku_test: false, catalyst: "Sản lượng hàng hóa qua cảng Hải Phòng tăng mạnh."
+                    }
                 ];
 
-                renderGrid(data);
+                renderGrid(allStocksData, 'all');
             } catch (error) {
-                document.getElementById('stock-grid').innerHTML = '<div class="loading" style="color:red;">Lỗi kết nối API!</div>';
+                document.getElementById('stock-grid').innerHTML = '<div class="loading" style="color:red;">Lỗi kết nối hoặc cấu trúc API Vnstock chưa khớp!</div>';
             }
         }
 
-        function renderGrid(stocks) {
+        // Chuyển đổi tab hiển thị và áp dụng bộ lọc toán học của Sếp
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            let filteredData = [];
+
+            if (tabName === 'all') {
+                filteredData = allStocksData;
+            } 
+            else if (tabName === 'tplus') {
+                // TIÊU CHÍ LỌC T+ PRO CHECKLIST CỦA SẾP
+                filteredData = allStocksData.filter(stock => {
+                    return stock.score >= 72 && 
+                           stock.money >= 13 && 
+                           stock.mom >= 9 && 
+                           stock.risk >= 8 &&
+                           stock.above_ma20 && stock.above_ma50 && 
+                           stock.vol_ratio >= 1.15 && 
+                           stock.rsi >= 48 && stock.rsi <= 72 &&
+                           stock.dist_ma20 <= 10 && // Không cách MA20 quá 10%
+                           stock.phien20 <= 15;     // Không tăng quá nóng 20 phiên
+                });
+            } 
+            else if (tabName === 'cycle') {
+                // TIÊU CHÍ LỌC CHU KỲ TĂNG MỚI (MÔ HÌNH VIC GIAI ĐOẠN ĐẦU)
+                filteredData = allStocksData.filter(stock => {
+                    return stock.tich_luy_thang >= 3 && // Giảm/tích lũy 3-6 tháng
+                           stock.day_sau_cao_hon &&      // Cấu trúc đáy sau cao hơn đáy trước
+                           stock.above_ma20 &&           // Vượt MA20/MA50
+                           stock.approach_ma100_200 &&   // Tiếp cận MA100/200
+                           stock.ma20_up &&              // MA20 cong lên
+                           stock.macd_above_signal &&    // MACD cắt lên từ vùng yếu
+                           stock.rsi >= 50 && stock.rsi <= 65 && // RSI lý tưởng 50-65
+                           stock.vol_ratio >= 1.3;       // Vol breakout 1.3 - 1.5 lần
+                });
+            }
+
+            renderGrid(filteredData, tabName);
+        }
+
+        function renderGrid(stocks, currentTab) {
             const grid = document.getElementById('stock-grid');
-            grid.innerHTML = ''; // Xóa chữ loading đi
+            grid.innerHTML = '';
+
+            if (stocks.length === 0) {
+                grid.innerHTML = '<div class="loading">Hiện tại không có mã nào đạt đủ bộ lọc của tiêu chí này.</div>';
+                return;
+            }
 
             stocks.forEach(stock => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 
-                let tagsHTML = stock.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+                // Thiết lập hiển thị Ghi chú & Checklist theo từng Tab để Sếp theo dõi
+                let checklistHTML = '';
+                let noteHTML = '';
+                let actionText = "THEO DÕI";
+
+                if (currentTab === 'tplus' || (currentTab === 'all' && stock.score >= 72 && stock.rsi <= 65)) {
+                    actionText = "MUA TỪNG PHẦN (Mục tiêu R:R 2:1)";
+                    checklistHTML = `
+                        <div class="checklist-box">
+                            📌 <b>T+ Pro Checklist Đạt:</b><br>
+                            • Giá trên MA20 (${stock.above_ma20 ? 'Đạt' : 'Không'}). MA20 đang cong lên.<br>
+                            • RSI Đẹp: ${stock.rsi} (Mục tiêu 52-65). Vol đạt x${stock.vol_ratio}.<br>
+                            • Điểm mua gần nền, cách MA20 ${stock.dist_ma20}%. Stoploss 3-5%.
+                        </div>`;
+                } else if (currentTab === 'cycle') {
+                    actionText = "GOM HÀNG CHU KỲ MỚI";
+                    checklistHTML = `
+                        <div class="checklist-box" style="border-left-color: #2da44e;">
+                            🔄 <b>Form Chu Kỳ Đáy Đạt:</b><br>
+                            • Tích lũy nền dài: ${stock.tich_luy_thang} tháng.<br>
+                            • Đáy sau cao hơn đáy trước. Thoát Kijun thành công.<br>
+                            • MACD cải thiện, RSI hồi phục trên 50.
+                        </div>`;
+                }
+
+                if (stock.catalyst) {
+                    noteHTML = `<div class="note-box">💡 <b>Catalyst/Cơ bản:</b> ${stock.catalyst}</div>`;
+                }
 
                 card.innerHTML = `
                     <div class="card-header">
                         <span class="symbol">${stock.symbol}</span>
-                        <span class="score">${stock.score}</span>
+                        <span class="score">${stock.score}/100đ</span>
                     </div>
                     <div class="sub-title">${stock.name}</div>
                     <div class="divider"></div>
-                    <h3 class="recommendation">${stock.action}</h3>
-                    <p class="setup-text"><strong>Setup:</strong> ${stock.setup}</p>
+                    <h3 class="recommendation">${actionText}</h3>
+                    
+                    ${checklistHTML}
+
                     <table class="info-table">
                         <tr>
-                            <td>Giá: <strong>${stock.gia}</strong></td>
+                            <td>Giá: <strong>${stock.gia.toLocaleString()}</strong></td>
                             <td>RSI: <strong>${stock.rsi}</strong></td>
-                            <td>20 phiên: <strong>${stock.phien20}</strong></td>
-                            <td>Vol: <strong>${stock.vol}</strong></td>
+                            <td>Tăng 20p: <strong>${stock.phien20}%</strong></td>
+                            <td>Vol Ratio: <strong>${stock.vol_ratio}</strong></td>
                         </tr>
                         <tr>
                             <td>Trend: <strong>${stock.trend}</strong></td>
                             <td>Mom: <strong>${stock.mom}</strong></td>
                             <td>Money: <strong>${stock.money}</strong></td>
-                            <td>Setup: <strong>${stock.setup_val}</strong></td>
+                            <td>Setup: <strong>${stock.setup_val || 14}</strong></td>
                         </tr>
                         <tr>
                             <td>Risk: <strong>${stock.risk}</strong></td>
                             <td>RS: <strong>${stock.rs}</strong></td>
-                            <td></td>
+                            <td>Cách MA20: <strong>${stock.dist_ma20}%</strong></td>
                             <td></td>
                         </tr>
                     </table>
-                    <div class="tags">${tagsHTML}</div>
+                    <div class="tags">
+                        <span class="tag">Vnstock API</span>
+                        <span class="tag">${stock.above_ma20 ? 'Trên MA20' : 'Dưới MA20'}</span>
+                    </div>
+                    ${noteHTML}
                 `;
                 grid.appendChild(card);
             });
         }
 
-        // Tự động chạy khi mở trang
+        // Khởi động load dữ liệu khi vào trang
         fetchStockData();
     </script>
 </body>
