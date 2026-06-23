@@ -17,112 +17,99 @@
         .symbol { font-size: 22px; font-weight: bold; color: #1f2328; }
         .score { background-color: #e6f7ed; color: #1a7f37; font-weight: bold; padding: 4px 8px; border-radius: 20px; font-size: 13px; }
         .divider { height: 4px; background-color: #1f2328; border-radius: 2px; margin-bottom: 12px; }
-        .recommendation { margin: 0 0 10px 0; font-size: 15px; font-weight: bold; text-transform: uppercase; }
-        .checklist-box { background-color: #f6f8fa; border-radius: 8px; padding: 8px 10px; font-size: 11px; margin-bottom: 12px; border-left: 3px solid #0969da; line-height: 1.4; }
-        .info-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
-        .info-table td { padding: 4px 0; color: #57606a; width: 25%; }
-        .info-table strong { color: #1f2328; }
+        .recommendation { margin: 0 0 10px 0; font-size: 15px; font-weight: bold; text-transform: uppercase; color: #0969da; }
+        .info-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+        .info-table td { padding: 6px 0; color: #57606a; width: 50%; }
+        .info-table strong { color: #1f2328; font-size: 14px; }
         .loading { text-align: center; font-size: 16px; color: #57606a; width: 100%; padding: 40px; }
     </style>
 </head>
 <body>
 
     <h1>📈 HỆ THỐNG QUÉT TÍN HIỆU TOÀN THỊ TRƯỜNG</h1>
-    <div class="subtitle-top" id="total-count">Đang kết nối dữ liệu nguồn độc quyền...</div>
+    <div class="subtitle-top" id="total-count">Đang đồng bộ dữ liệu gốc...</div>
 
     <div class="tabs-container">
-        <button class="tab-button active" id="btn-all" onclick="switchTab('all')">Tất Cả Mã</button>
-        <button class="tab-button" id="btn-tplus" onclick="switchTab('tplus')">🔥 Lướt Sóng T+ Pro</button>
-        <button class="tab-button" id="btn-cycle" onclick="switchTab('cycle')">🔄 Chu Kỳ Tăng Mới</button>
+        <button class="tab-button active" id="btn-all" onclick="switchTab('all')">Toàn Bộ Mã T+ Từ API</button>
     </div>
 
     <div class="grid-container" id="stock-grid">
-        <div class="loading">Đang tải bảng giá từ Vnstock...</div>
+        <div class="loading">Đang tải bảng giá chính xác từ Vnstock...</div>
     </div>
 
     <script>
         let allStocksData = [];
-        let currentActiveTab = 'all';
 
-        // Độc quyền đọc file data.json từ kho lưu trữ của Sếp, không gọi nguồn linh tinh bên ngoài
         async function loadLocalData() {
             try {
+                // Đọc trực tiếp file data.json chính xác từ bot Python của Sếp
                 const response = await fetch('data.json?t=' + Date.now());
                 allStocksData = await response.json();
                 
-                if (allStocksData.length === 0) {
-                    document.getElementById('stock-grid').innerHTML = '<div class="loading">Dữ liệu rỗng. Chờ phiên giao dịch tiếp theo để hệ thống tự quét...</div>';
+                if (!allStocksData || allStocksData.length === 0) {
+                    document.getElementById('stock-grid').innerHTML = '<div class="loading">Dữ liệu trống. Vui lòng chạy lại Workflow bên tab Actions để cập nhật số mới.</div>';
                     return;
                 }
                 
-                document.getElementById('total-count').innerText = `Hệ thống đồng bộ độc quyền: Tìm thấy ${allStocksData.length} mã khả dụng từ Vnstock API.`;
-                applyFilterAndRender();
+                document.getElementById('total-count').innerText = `Hệ thống đồng bộ độc quyền: Hiển thị đúng 100% dữ liệu gốc của ${allStocksData.length} mã khả dụng.`;
+                renderGrid(allStocksData);
             } catch (error) {
-                document.getElementById('stock-grid').innerHTML = '<div class="loading" style="color:red;">Đang chờ Bot Python đẩy dữ liệu thật phiên giao dịch lên...</div>';
+                document.getElementById('stock-grid').innerHTML = '<div class="loading" style="color:red;">Không thể đọc file dữ liệu. Đang đợi Bot đẩy số lên kho...</div>';
             }
         }
 
-        function switchTab(tabName) {
-            currentActiveTab = tabName;
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('btn-' + tabName).classList.add('active');
-            applyFilterAndRender();
-        }
-
-        function applyFilterAndRender() {
-            let filteredData = [];
-            if (currentActiveTab === 'all') filteredData = allStocksData;
-            else if (currentActiveTab === 'tplus') {
-                // Tiêu chí T+ Pro chuẩn đét
-                filteredData = allStocksData.filter(s => s.score >= 72 && s.money >= 13 && s.mom >= 9 && s.risk >= 8 && s.vol_ratio >= 1.15 && s.rsi >= 48 && s.rsi <= 72 && s.dist_ma20 <= 10 && s.phien20 <= 15);
-            }
-            else if (currentActiveTab === 'cycle') {
-                // Tiêu chí Chu kỳ tăng mới
-                filteredData = allStocksData.filter(s => s.tich_luy_thang >= 3 && s.day_sau_cao_hon && s.rsi >= 50 && s.rsi <= 65 && s.vol_ratio >= 1.2);
-            }
-            renderGrid(filteredData, currentActiveTab);
-        }
-
-        function renderGrid(stocks, currentTab) {
+        function renderGrid(stocks) {
             const grid = document.getElementById('stock-grid');
             grid.innerHTML = '';
             
-            if (stocks.length === 0) {
-                grid.innerHTML = '<div class="loading">Không có mã nào khớp bộ lọc kỹ thuật của tab này.</div>';
-                return;
-            }
-            
-            // Sắp xếp mã có điểm cao nhất lên đầu bảng
-            stocks.sort((a, b) => b.score - a.score);
+            // Sắp xếp theo mã chữ cái từ A-Z để Sếp dễ đối chiếu với bảng giá gốc
+            stocks.sort((a, b) => String(a.symbol).localeCompare(String(b.symbol)));
             
             stocks.forEach(stock => {
                 const card = document.createElement('div');
                 card.className = 'card';
-                let isTPlus = currentTab === 'tplus' || stock.score >= 75;
-                let actionText = isTPlus ? "MUA TỪNG PHẦN (T+ Pro)" : "GOM CHU KỲ MỚI";
-                let color = isTPlus ? "#1a7f37" : "#0969da";
                 
+                // Hiển thị trực tiếp toàn bộ giá trị trường thông tin từ API, không tính toán lại, không thêm thắt chữ thừa
                 card.innerHTML = `
-                    <div class="card-header"><span class="symbol">${stock.symbol}</span><span class="score">${stock.score} đ</span></div>
-                    <div class="sub-title">${stock.symbol} · Vnstock Realtime</div>
-                    <div class="divider"></div>
-                    <h3 class="recommendation" style="color: ${color}">${actionText}</h3>
-                    <div class="checklist-box" style="border-left-color: ${color}">
-                        ${isTPlus ? `🎯 <b>T+ Checklist:</b> RSI: ${stock.rsi}. Vol Ratio: x${stock.vol_ratio}. Cách MA20: ${stock.dist_ma20}%.` : `🔄 <b>Form Đáy:</b> Tích lũy ${stock.tich_luy_thang} tháng. Cấu trúc đáy sau cao hơn.`}
+                    <div class="card-header">
+                        <span class="symbol">${stock.symbol || '---'}</span>
+                        <span class="score">Điểm: ${stock.score !== None && stock.score !== undefined ? stock.score : '---'}</span>
                     </div>
+                    <div class="divider"></div>
+                    
                     <table class="info-table">
-                        <tr><td>Giá: <strong>${stock.gia}</strong></td><td>RSI: <strong>${stock.rsi}</strong></td><td>Tăng 20p: <strong>${stock.phien20}%</strong></td><td>Vol Ratio: <strong>${stock.vol_ratio}</strong></td></tr>
-                        <tr><td>Trend: <strong>${stock.trend}</strong></td><td>Mom: <strong>${stock.mom}</strong></td><td>Money: <strong>${stock.money}</strong></td><td>Setup: <strong>14</strong></td></tr>
-                        <tr><td>Risk: <strong>${stock.risk}</strong></td><td>RS: <strong>${stock.rs}</strong></td><td>Cách MA: <strong>${stock.dist_ma20}%</strong></td><td></td></tr>
+                        <tr>
+                            <td>Giá hiện tại: <strong>${stock.gia !== None && stock.gia !== undefined ? stock.gia : '---'}</strong></td>
+                            <td>Chỉ số RSI: <strong>${stock.rsi !== None && stock.rsi !== undefined ? stock.rsi : '---'}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Biến động 20 phiên: <strong>${stock.phien20 !== None && stock.phien20 !== undefined ? stock.phien20 : '---'}%</strong></td>
+                            <td>Tỷ lệ Volume: <strong>${stock.vol_ratio !== None && stock.vol_ratio !== undefined ? stock.vol_ratio : '---'}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Trend Score: <strong>${stock.trend !== None && stock.trend !== undefined ? stock.trend : '---'}</strong></td>
+                            <td>Momentum: <strong>${stock.mom !== None && stock.mom !== undefined ? stock.mom : '---'}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Money Flow: <strong>${stock.money !== None && stock.money !== undefined ? stock.money : '---'}</strong></td>
+                            <td>Risk Score: <strong>${stock.risk !== None && stock.risk !== undefined ? stock.risk : '---'}</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Xếp hạng RS: <strong>${stock.rs !== None && stock.rs !== undefined ? stock.rs : '---'}</strong></td>
+                            <td>Cách MA20: <strong>${stock.dist_ma20 !== None && stock.dist_ma20 !== undefined ? stock.dist_ma20 : '---'}%</strong></td>
+                        </tr>
+                        <tr>
+                            <td>Tích lũy nền: <strong>${stock.tich_luy_thang !== None && stock.tich_luy_thang !== undefined ? stock.tich_luy_thang : '---'} tháng</strong></td>
+                            <td>Đáy sau cao hơn: <strong>${stock.day_sau_cao_hon ? 'Đạt' : 'Không'}</strong></td>
+                        </tr>
                     </table>
                 `;
                 grid.appendChild(card);
             });
         }
         
-        // Khởi động load dữ liệu
         loadLocalData();
-        // Cứ 10 giây trang web đọc lại file data.json một lần xem có dữ liệu mới do bot đẩy lên không
+        // Tự động đồng bộ số mới sau mỗi 10 giây công khai
         setInterval(loadLocalData, 10000); 
     </script>
 </body>
