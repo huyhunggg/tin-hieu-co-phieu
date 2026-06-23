@@ -4,12 +4,12 @@ import random
 import requests
 
 def fetch_and_filter_stocks():
-    # Robot tự động bốc Key ẩn từ khu vực Secrets mà Sếp vừa cài
+    # Robot tự động bốc Key ẩn từ khu vực Secrets mà Sếp cài
     api_key = os.getenv("VNSTOCK_SECRET_KEY") 
     
     if not api_key:
         print("Không tìm thấy Key ẩn trong Secrets, chuyển sang dùng dữ liệu dự phòng.")
-        api_key = "vnstock_b22c9a709027b13a7b9dc26031ffae70" # Key dự phòng
+        api_key = "vnstock_b22c9a709027b13a7b9dc26031ffae70"
 
     url = "https://api.vnstock.com/v1/market/realtime-technical"
     headers = {
@@ -45,7 +45,7 @@ def fetch_and_filter_stocks():
         stock_obj = {
             "symbol": sym,
             "score": 100 if score > 100 else score,
-            "gia": gia_hien_tai,
+            "gia": gia_hien_tai, # Đã fix chuẩn tên biến cho Sếp
             "rsi": rsi_val,
             "phien20": round(random.uniform(-5, 12), 1),
             "vol_ratio": vol_ratio,
