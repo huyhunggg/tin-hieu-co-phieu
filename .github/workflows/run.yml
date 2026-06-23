@@ -1,0 +1,32 @@
+name: Bot Cap Nhat Du Lieu T+ Realtime
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Cứ 10 phút chạy tự động một lần
+  workflow_dispatch: # Cho phép sếp ấn nút chạy bằng tay bất cứ lúc nào
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Kiểm tra mã nguồn
+      uses: actions/checkout@v3
+    - name: Cài đặt Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Cài đặt thư viện mạng
+      run: pip install requests
+    - name: Chạy Script Python Quét Vnstock
+      env:
+        # CẤP QUYỀN: Bắn cái key bí mật từ kho Secrets vào file Python
+        VNSTOCK_SECRET_KEY: ${{ secrets.VNSTOCK_API_KEY }} 
+      run: python updater.py
+    - name: Lưu file dữ liệu lên trang web
+      run: |
+        git config --global user.name 'GitHub Action Bot'
+        git config --global user.email 'bot@github.com'
+        git add data.json
+        git commit -m "Bot cập nhật chỉ số thị trường Realtime từ Key ẩn" || exit 0
+        git push
