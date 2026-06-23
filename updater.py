@@ -1,12 +1,35 @@
 import os
 import json
-import random
 import requests
+from datetime import datetime
+
+def is_market_hours():
+    now = datetime.now()
+    # Kiểm tra nếu là Thứ 7 (5) hoặc Chủ Nhật (6) thì nghỉ
+    if now.weekday() >= 5:
+        return False
+        
+    current_time = now.strftime("%H:%M")
+    morning_start = "09:00"
+    morning_end = "11:30"
+    afternoon_start = "13:00"
+    afternoon_end = "15:00"
+    
+    # Kiểm tra nằm trong 2 khung giờ giao dịch chuẩn của Sếp
+    if (morning_start <= current_time <= morning_end) or (afternoon_start <= current_time <= afternoon_end):
+        return True
+    return False
 
 def fetch_and_filter_stocks():
+    # Chỉ chạy khi trong giờ giao dịch
+    if not is_market_hours():
+        print("Ngoài giờ giao dịch hoặc ngày nghỉ. Bot tự động bỏ qua quét dữ liệu.")
+        return
+
     api_key = os.getenv("VNSTOCK_SECRET_KEY")
     if not api_key:
-        api_key = "vnstock_b22c9a709027b13a7b9dc26031ffae70"
+        print("LỖI: Không tìm thấy VNSTOCK_SECRET_KEY trong Secrets!")
+        return
 
     url = "https://api.vnstock.com/v1/market/realtime-technical"
     headers = {
@@ -14,54 +37,53 @@ def fetch_and_filter_stocks():
         "Content-Type": "application/json"
     }
 
-    processed_data = []
-    
     try:
-        response = requests.get(url, headers=headers, timeout=10)
-        if response.status_code == 200:
-            market_data = response.json()
-        else:
-            res_fallback = requests.get("https://services.entrade.com.vn/api/market/price/hose", timeout=10)
-            market_data = res_fallback.json()
+        response = requests.get(url, headers=headers, timeout=15)
+        if response.status_code != 200:
+            print(f"LỖI API: Vnstock trả về mã lỗi {response.status_code}")
+            return
+        market_data = response.json()
     except Exception as e:
-        print("Lỗi kết nối API:", e)
-        # Nếu sập toàn tập, tự tạo data mẫu chuẩn luôn tại đây để không bao giờ bị lỗi thiếu file Git
-        market_data = [{"symbol": sym} for sym in ["STB","PVP","TTA","PHP","SSI","VND","HPG","FPT","MWG","VIC"]]
+        print("LỖI KẾT NỐI: Không thể kết nối tới API Vnstock:", e)
+        return
 
+    # Chỉ xử lý dữ liệu thật từ Vnstock, không thêm thắt ngẫu nhiên
+    processed_data = []
     for item in market_data:
         sym = item.get("symbol")
         if not sym or len(sym) != 3:
             continue
             
-        gia_hien_tai = int(item.get("price", 0) * 1000) if item.get("price") else int(item.get("closePrice", random.randint(18, 45) * 1000))
-        vol_ratio = round(random.uniform(0.7, 1.9), 2)
-        rsi_val = random.randint(49, 71)
-        money_flow = random.randint(12, 19)
-        momentum = random.randint(8, 12)
-        risk_score = random.randint(7, 13)
-        score = int((money_flow + momentum + 20) * 2.3)
+        # Ánh xạ chuẩn xác tên trường dữ liệu từ Vnstock API của Sếp
+        # Chia 1000 nếu API trả về đơn vị Đồng để hiển thị dạng 72.3 (72.300đ) đúng chuẩn bảng giá gốc
+        price_raw = item.get("price") or item.get("closePrice") or item.get("matchPrice") or 0
+        gia_hien_tai = float(price_raw) / 1000 if price_raw > 1000 else float(price_raw)
         
         stock_obj = {
             "symbol": sym,
-            "score": 100 if score > 100 else score,
-            "gia": gia_hien_tai,
-            "rsi": rsi_val,
-            "phien20": round(random.uniform(-3, 10), 1),
-            "vol_ratio": vol_ratio,
-            "mom": momentum,
-            "money": money_flow,
-            "risk": risk_score,
-            "rs": random.randint(11, 15),
-            "dist_ma20": round(random.uniform(0.5, 5.5), 1),
-            "tich_luy_thang": random.randint(2, 6),
-            "day_sau_cao_hon": random.choice([True, False])
+            "score": int(item.get("score") or item.get("totalScore") or 0),
+            "gia": round(gia_hien_tai, 2),
+            "rsi": round(float(item.get("rsi") or 0), 2),
+            "phien20": round(float(item.get("change20") or item.get("priceChange20") or 0), 2),
+            "vol_ratio": round(float(item.get("volumeRatio") or item.get("volRatio") or 0), 2),
+            "trend": int(item.get("trend") or item.get("trendScore") or 0),
+            "mom": int(item.get("momentum") or item.get("momScore") or 0),
+            "money": int(item.get("moneyFlow") or item.get("moneyScore") or 0),
+            "risk": int(item.get("risk") or item.get("riskScore") or 0),
+            "rs": int(item.get("rs") or item.get("rsRating") or 0),
+            "dist_ma20": round(float(item.get("distanceMA20") or item.get("distMA20") or 0), 2),
+            "tich_luy_thang": int(item.get("consolidationMonths") or item.get("baseWeeks", 0) // 4 or 0),
+            "day_sau_cao_hon": bool(item.get("higherLow", False))
         }
         processed_data.append(stock_obj)
 
-    # Đoạn này cam kết luôn xuất file thành công
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(processed_data, f, ensure_ascii=False, indent=2)
-    print(f"Đã xuất thành công {len(processed_data)} mã.")
+    # Chỉ ghi đè file khi có dữ liệu thật đổ về thành công
+    if processed_data:
+        with open("data.json", "w", encoding="utf-8") as f:
+            json.dump(processed_data, f, ensure_ascii=False, indent=2)
+        print(f"Đã cập nhật thành công {len(processed_data)} mã từ Vnstock API.")
+    else:
+        print("Cảnh báo: Dữ liệu API trả về trống hoặc lỗi cấu trúc trường thông tin.")
 
 if __name__ == "__main__":
     fetch_and_filter_stocks()
